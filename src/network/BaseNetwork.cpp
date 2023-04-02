@@ -763,7 +763,10 @@ bool BaseNetwork::writeP25LDU1(const uint32_t id, const uint32_t streamId, const
         uint8_t mi[p25::P25_MI_LENGTH_BYTES];
         ::memset(mi, 0x00U, p25::P25_MI_LENGTH_BYTES);
         control.getMI(mi);
-        Utils::dump(1U, "P25 HDU MI written to network", mi, p25::P25_MI_LENGTH_BYTES);
+
+        if (m_debug) {
+            Utils::dump(1U, "P25 HDU MI written to network", mi, p25::P25_MI_LENGTH_BYTES);
+        }
 
         for (uint8_t i = 0; i < p25::P25_MI_LENGTH_BYTES; i++) {
             buffer[184U + i] = mi[i];                                               // Message Indicator
