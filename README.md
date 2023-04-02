@@ -6,6 +6,9 @@ This project is a direct fork of the MMDVMHost (https://github.com/g4klx/MMDVMHo
 
 Please feel free to reach out to us for help, comments or otherwise, on our Discord: https://discord.gg/3pBe8xgrEz
 
+## What the Fork?
+This fork enables band plans with steps larger than 6.25 kHz and receive frequencies below the base frequency. Such band plans are standard above 512 MHz, and have utility below 512 MHz. In particular, DVMHost was previously limited to a maximum 25.5 MHz frequency split due these arbitrary limitations, preventing duplex hotspot or trunking operation on the 900 MHz amateur band with standard frequency shifts (26 MHz). 
+
 ## Building
 
 This project utilizes CMake for its build system. (All following information assumes familiarity with the standard Linux make system.)
