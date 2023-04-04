@@ -108,22 +108,13 @@ bool Voice::process(uint8_t* data, uint32_t len)
     // Decode the NID
     bool valid = m_p25->m_nid.decode(data + 2U);
 
-    if (m_p25->m_rfState == RS_RF_LISTENING && !valid)
+    if (m_p25->m_rfState == RS_RF_LISTENING && !valid) {
         return false;
+    }
 
     uint8_t duid = m_p25->m_nid.getDUID();
     if (!valid) {
-        switch (m_lastDUID) {
-            case P25_DUID_HDU:
-            case P25_DUID_LDU2:
-                duid = P25_DUID_LDU1;
-                break;
-            case P25_DUID_LDU1:
-                duid = P25_DUID_LDU2;
-                break;
-            default:
-                break;
-        }
+        return false;
     }
 
     // are we interrupting a running CC?
@@ -194,7 +185,7 @@ bool Voice::process(uint8_t* data, uint32_t len)
                 LogWarning(LOG_RF, "Traffic collision detect, preempting existing network traffic to new RF traffic, rfDstId = %u, netDstId = %u", lc.getDstId(),
                     m_p25->m_netLastDstId);
                 resetNet();
-                
+
                 if (m_p25->m_duplex) {
                     m_p25->writeRF_TDU(true);
                 }
@@ -213,9 +204,14 @@ bool Voice::process(uint8_t* data, uint32_t len)
         return true;
     }
     else if (duid == P25_DUID_LDU1) {
-        bool alreadyDecoded = false;
+        
+        // prevent two LDUs of the same type from being sent consecutively
+        if (m_lastDUID == P25_DUID_LDU1) {
+            return false;
+        }
         m_lastDUID = P25_DUID_LDU1;
 
+        bool alreadyDecoded = false;
         uint8_t frameType = P25_FT_DATA_UNIT;
         if (m_p25->m_rfState == RS_RF_LISTENING) {
             // if this is a late entry call, clear states
@@ -376,7 +372,7 @@ bool Voice::process(uint8_t* data, uint32_t len)
                                     return false;
                                 }
                             }
-                        }                        
+                        }
 
                         if (!m_p25->m_trunk->writeRF_TSDU_Grant(srcId, dstId, serviceOptions, group)) {
                             return false;
@@ -581,6 +577,11 @@ bool Voice::process(uint8_t* data, uint32_t len)
         }
     }
     else if (duid == P25_DUID_LDU2) {
+        
+        // prevent two LDUs of the same type from being sent consecutively
+        if (m_lastDUID == P25_DUID_LDU2) {
+            return false;
+        }
         m_lastDUID = P25_DUID_LDU2;
 
         if (m_p25->m_rfState == RS_RF_LISTENING) {
@@ -675,7 +676,7 @@ bool Voice::process(uint8_t* data, uint32_t len)
             }
 
             if (m_verbose) {
-                LogMessage(LOG_RF, P25_LDU2_STR ", audio, algo = $%02X, kid = $%04X, errs = %u/1233 (%.1f%%)", 
+                LogMessage(LOG_RF, P25_LDU2_STR ", audio, algo = $%02X, kid = $%04X, errs = %u/1233 (%.1f%%)",
                     m_rfLC.getAlgId(), m_rfLC.getKId(), errors, float(errors) / 12.33F);
             }
 
@@ -706,16 +707,16 @@ bool Voice::process(uint8_t* data, uint32_t len)
 
         if (m_p25->m_rfState == RS_RF_AUDIO) {
             if (m_p25->m_rssi != 0U) {
-                ::ActivityLog("P25", true, "RF end of transmission, %.1f seconds, BER: %.1f%%, RSSI : -%u / -%u / -%u dBm", 
-                    float(m_rfFrames) / 5.56F, float(m_rfErrs * 100U) / float(m_rfBits), m_p25->m_minRSSI, m_p25->m_maxRSSI, 
+                ::ActivityLog("P25", true, "RF end of transmission, %.1f seconds, BER: %.1f%%, RSSI : -%u / -%u / -%u dBm",
+                    float(m_rfFrames) / 5.56F, float(m_rfErrs * 100U) / float(m_rfBits), m_p25->m_minRSSI, m_p25->m_maxRSSI,
                     m_p25->m_aveRSSI / m_p25->m_rssiCount);
             }
             else {
-                ::ActivityLog("P25", true, "RF end of transmission, %.1f seconds, BER: %.1f%%", 
+                ::ActivityLog("P25", true, "RF end of transmission, %.1f seconds, BER: %.1f%%",
                     float(m_rfFrames) / 5.56F, float(m_rfErrs * 100U) / float(m_rfBits));
             }
 
-            LogMessage(LOG_RF, P25_TDU_STR ", total frames: %d, bits: %d, undecodable LC: %d, errors: %d, BER: %.4f%%", 
+            LogMessage(LOG_RF, P25_TDU_STR ", total frames: %d, bits: %d, undecodable LC: %d, errors: %d, BER: %.4f%%",
                 m_rfFrames, m_rfBits, m_rfUndecodableLC, m_rfErrs, float(m_rfErrs * 100U) / float(m_rfBits));
 
             if (m_p25->m_dedicatedControl) {
@@ -807,10 +808,10 @@ bool Voice::processNetwork(uint8_t* data, uint32_t len, lc::LC& control, data::L
                     lc::LC control = lc::LC(*m_dfsiLC.control());
                     m_p25->m_affiliations.touchGrant(control.getDstId());
                 }
-                
+
                 if (m_p25->m_dedicatedControl && !m_p25->m_voiceOnControl) {
                     return true;
-                } 
+                }
 
                 if (m_p25->m_netState == RS_NET_IDLE) {
                     // are we interrupting a running CC?
@@ -866,22 +867,22 @@ bool Voice::processNetwork(uint8_t* data, uint32_t len, lc::LC& control, data::L
                 m_dfsiLC.setFrameType(dfsi::P25_DFSI_LDU2_VOICE18);
                 m_dfsiLC.decodeLDU2(data + count, m_netLDU2 + 204U);
                 count += 16U;
-            
+
                 if (m_p25->m_control) {
                     lc::LC control = lc::LC(*m_dfsiLC.control());
                     m_p25->m_affiliations.touchGrant(control.getDstId());
                 }
-                
+
                 if (m_p25->m_dedicatedControl && !m_p25->m_voiceOnControl) {
                     return true;
-                } 
+                }
 
                 if (m_p25->m_netState == RS_NET_IDLE) {
                     if (!m_p25->m_voiceOnControl) {
                         m_p25->m_modem->clearP25Data();
                     }
                     m_p25->m_queue.clear();
-                    
+
                     resetRF();
                     resetNet();
 
@@ -955,6 +956,7 @@ Voice::Voice(Control* p25, network::BaseNetwork* network, bool debug, bool verbo
     m_netLDU2(nullptr),
     m_lastDUID(P25_DUID_TDU),
     m_lastIMBE(nullptr),
+    m_lastMI(nullptr),
     m_hadVoice(false),
     m_lastRejectId(0U),
     m_silenceThreshold(DEFAULT_SILENCE_THRESHOLD),
@@ -970,6 +972,9 @@ Voice::Voice(Control* p25, network::BaseNetwork* network, bool debug, bool verbo
 
     m_lastIMBE = new uint8_t[11U];
     ::memcpy(m_lastIMBE, P25_NULL_IMBE, 11U);
+
+    m_lastMI = new uint8_t[P25_MI_LENGTH_BYTES];
+    ::memset(m_lastMI, 0x00U, P25_MI_LENGTH_BYTES);
 }
 
 /// <summary>
@@ -980,6 +985,7 @@ Voice::~Voice()
     delete[] m_netLDU1;
     delete[] m_netLDU2;
     delete[] m_lastIMBE;
+    delete[] m_lastMI;
 }
 
 /// <summary>
@@ -1070,7 +1076,7 @@ void Voice::writeNet_TDU()
     }
 
     if (m_netFrames > 0) {
-        ::ActivityLog("P25", false, "network end of transmission, %.1f seconds, %u%% packet loss", 
+        ::ActivityLog("P25", false, "network end of transmission, %.1f seconds, %u%% packet loss",
             float(m_netFrames) / 50.0F, (m_netLost * 100U) / m_netFrames);
     }
     else {
@@ -1224,7 +1230,6 @@ void Voice::writeNet_LDU1()
             control.setAlgId(m_netLastLDU1.getAlgId());
             control.setKId(m_netLastLDU1.getKId());
         }
-
 
         // restore MI from member variable
         ::memcpy(mi, m_lastMI, P25_MI_LENGTH_BYTES);
@@ -1430,9 +1435,9 @@ void Voice::writeNet_LDU2()
 {
     lc::LC control = lc::LC(*m_dfsiLC.control());
     data::LowSpeedData lsd = data::LowSpeedData(*m_dfsiLC.lsd());
-    
+
     uint32_t dstId = control.getDstId();
-    
+
     // don't process network frames if this modem isn't authoritative
     if (!m_p25->m_authoritative && m_p25->m_permittedDstId != dstId) {
         LogWarning(LOG_NET, "[NON-AUTHORITATIVE] Ignoring network traffic (LDU2), destination not permitted!");

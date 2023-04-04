@@ -47,7 +47,7 @@ namespace p25
     // ---------------------------------------------------------------------------
     //  Class Prototypes
     // ---------------------------------------------------------------------------
-    
+
     namespace packet { class HOST_SW_API Trunk; }
     class HOST_SW_API Control;
 
@@ -104,7 +104,7 @@ namespace p25
 
             uint8_t m_lastDUID;
             uint8_t* m_lastIMBE;
-            uint8_t m_lastMI[P25_MI_LENGTH_BYTES];
+            uint8_t* m_lastMI;
 
             bool m_hadVoice;
             uint32_t m_lastRejectId;
