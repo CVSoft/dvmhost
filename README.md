@@ -1,3 +1,6 @@
+# IMPORTANT NOTE
+This is an OLD version of DVMHost 3.0 that is not maintained. 
+
 # Digital Voice Modem Host
 
 The DVM Host software provides the host computer implementation of a mixed-mode DMR, P25 and/or NXDN or dedicated-mode DMR, P25 or NXDN repeater system that talks to the actual modem hardware. The host software; is the portion of a complete Over-The-Air modem implementation that performs the data processing, decision making and FEC correction for a digital repeater.
